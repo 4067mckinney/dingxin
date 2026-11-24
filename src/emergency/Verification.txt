@@ -1,0 +1,1 @@
+PASS emergency companion recognizes both product names and rejects unrelated binaries

@@ -1,0 +1,24 @@
+PASS renamed shortcut is created and the matching legacy link is removed
+PASS in-place update from 1.19.10.0 to 1.19.11.0, session retention, and rollback after publication failure
+PASS timer, settings lock, pause minutes, monthly stop counts, and state reload
+PASS multiple independent schedules, disabled slots, and no duplicate triggers
+PASS fixed end times, late starts, overnight sessions, overlaps, and restart
+PASS skip survives restart and emergency release works with zero allowance or a failed state write
+PASS original installation settings and history load unchanged
+PASS foreground time, blocked attempts, inactive gaps, and local history reload
+PASS password, recovery, reset, deletion, and lock
+PASS app grouping and system filtering (81 applications)
+PASS app picker separates Windows packages and components from third-party applications
+PASS website allowlist over loopback HTTP and CONNECT
+PASS non-allowlisted window minimizes, keeps its process and window, and can be restored
+PASS main window skips the next occurrence and immediately restores manual start
+PASS preflight cancel has no side effects and confirm starts the configured round
+PASS floating pause, resume, stop reason and quota, count-up end, tray, and live appearance settings
+PASS software and website search, locked website editing, record filter, notifications, and HUD opacity
+PASS unified UI font, opaque settings switches, 100% HUD label, and full four-digit durations
+PASS warm navigation median 1.67 ms, max 2.85 ms, Motion max callback 0.60 ms (10 frames)
+PASS navigation, allowlists, per-plan display, auto-dismiss, and focus sound triggers
+PASS setup themes, version, drive selection, and safe uninstall confirmation
+PASS tray exit with an enabled plan, during focus, and near a planned start
+Edge checks were run separately on the same candidate.
+PASS real Edge content, existing profile after restart, second window, denied site, and ordinary Edge minimization
