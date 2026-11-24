@@ -1,0 +1,18 @@
+﻿# 构建产物
+bin/
+obj/
+out/
+out-*/
+*.exe
+*.zip
+!docs/**/*.exe
+
+# 用户数据
+*.dat
+state.dat
+FocusHistory/
+crash-*.log
+
+# 系统文件
+Thumbs.db
+desktop.ini
