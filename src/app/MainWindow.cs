@@ -433,7 +433,7 @@ namespace StudyFocus
                     graphics.FillPath(background, path);
                     graphics.DrawPath(border, path);
                 }
-                string caption = renderedTrial ? "测试中" : renderedPaused ? "暂停中" : renderedSession != null ? "专注中" : "准备开始";
+                string caption = renderedTrial ? "测试中" : renderedPaused ? "暂停中" : renderedSession != null ? (renderedSession.Scheduled ? "自动开始" : "专注中") : "准备开始";
                 TextRenderer.DrawText(graphics, caption, Font, badge, badgeInk, align);
             }
         }

@@ -12,7 +12,7 @@ using Microsoft.Win32;
 [assembly: AssemblyDescription("结束当前专注并跳过眼下的自动计划")]
 [assembly: AssemblyProduct(StudyFocus.ProductBrand.EmergencyName)]
 [assembly: AssemblyCompany(StudyFocus.ProductBrand.Company)]
-[assembly: AssemblyVersion("1.6.0.0")]
+[assembly: AssemblyVersion("1.7.0.0")]
 
 namespace StudyFocus
 {
@@ -91,7 +91,9 @@ namespace StudyFocus
                     Minutes = engine.MinutesRemaining(now), Reason = "强制停止（应急）"
                 });
             }
+            long scheduleStart = state.Session != null && state.Session.Scheduled ? state.Session.ScheduleStartUtc : 0;
             state.Session = null;
+            if (scheduleStart != 0) engine.DisableScheduleStart(new DateTimeOffset(scheduleStart, TimeSpan.Zero).ToLocalTime());
             bool skipped = false;
             var due = engine.DueWindow(now);
             if (due != null)

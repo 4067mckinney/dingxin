@@ -16,7 +16,7 @@ using Microsoft.Win32;
 [assembly: AssemblyDescription("Windows 专注计时与白名单")]
 [assembly: AssemblyProduct(StudyFocus.ProductBrand.Name)]
 [assembly: AssemblyCompany(StudyFocus.ProductBrand.Company)]
-[assembly: AssemblyVersion("2.3.4.0")]
+[assembly: AssemblyVersion("2.4.3.0")]
 
 namespace StudyFocus
 {

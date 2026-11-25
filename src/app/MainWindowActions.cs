@@ -105,7 +105,7 @@ namespace StudyFocus
 
                 next = engine.NextSchedule(now);
                 bool autoStart = trial == null && engine.Session == null;
-                var due = autoStart ? engine.DueWindow(now) : null;
+                var due = autoStart ? engine.ActiveWindow(now) : null;
                 int countdown = autoStart ? ScheduledCountdown(now, next, due) : 0;
                 ShowScheduleCountdown(countdown);
                 if (due != null && now >= nextRetry && countdown == 0)
@@ -113,7 +113,7 @@ namespace StudyFocus
                     try
                     {
                         EnsureProxy();
-                        engine.StartScheduled(DateTimeOffset.Now, due);
+                        engine.StartActiveSchedule(DateTimeOffset.Now);
                         Restrict(now);
                         if (engine.Session != null)
                         {
@@ -219,7 +219,8 @@ namespace StudyFocus
                 : paused ? "暂停结束后自动恢复专注"
                 : active && round.Scheduled ? "计划结束 " + new DateTimeOffset(round.FinishUtc, TimeSpan.Zero).ToLocalTime().ToString("HH:mm")
                 : openEnded ? (active ? "按「结束」完成本轮专注" : "无固定时长") : "本轮目标 " + minutes + " 分钟";
-            modeLabel.Text = testing ? "白名单测试" : paused ? "暂停剩余" : TimerModeName(countUp) + "专注";
+            modeLabel.Text = testing ? "白名单测试" : paused ? "暂停剩余"
+                    : ((round != null && round.Scheduled) ? "自动开始 · " : "") + TimerModeName(countUp) + "专注";
             var displayedSchedule = skippableSchedule ?? next;
             scheduleLabel.Text = displayedSchedule.HasValue ? DateLabel(displayedSchedule.Value, now) : "未设置";
             planNext.Text = next.HasValue ? "下次开始  " + DateLabel(next.Value, now) : "";
@@ -372,7 +373,13 @@ namespace StudyFocus
         {
             if (engine.Session == null || !ConfirmEmergencyRelease() || engine.Session == null) return;
             string saveError = null;
-            try { engine.EmergencyRelease(DateTimeOffset.Now); }
+            var emergencySession = engine.Session;
+            try
+            {
+                engine.EmergencyRelease(DateTimeOffset.Now);
+                if (emergencySession != null && emergencySession.Scheduled && emergencySession.ScheduleStartUtc != 0)
+                    engine.DisableScheduleStart(new DateTimeOffset(emergencySession.ScheduleStartUtc, TimeSpan.Zero).ToLocalTime());
+            }
             catch (Exception ex) { saveError = ex.Message; }
             Restrict(DateTimeOffset.Now);
             if (engine.Settings.PlayChimes) FocusSounds.PlayEnd();
@@ -467,10 +474,13 @@ namespace StudyFocus
                 if (engine.Session != session)
                     throw new InvalidOperationException("本轮专注已变更，请重新确认是否停止。");
                 now = DateTimeOffset.Now;
+                var stopping = engine.Session;
                 engine.Stop(now, reason.Text);
+                bool planDisabled = engine.DisableScheduleCovering(now);
+                ReloadPlans();
                 Restrict(now);
                 if (engine.Settings.PlayChimes) FocusSounds.PlayEnd();
-                notice = "已提前停止，理由已保存。";
+                notice = planDisabled ? "已提前停止，理由已保存；该计划已设为停用。" : "已提前停止，理由已保存。";
                 if (page == 2) RefreshRecords();
             }
         }

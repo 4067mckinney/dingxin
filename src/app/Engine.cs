@@ -108,6 +108,7 @@ namespace StudyFocus
         public long StartedUtc { get; set; }
         public long PausedTicks { get; set; }
         public bool Scheduled { get; set; }
+        public long ScheduleStartUtc { get; set; }
         public long PauseUntilUtc { get; set; }
         public long CurrentPauseTicks { get; set; }
         public int PauseUsed { get; set; }
@@ -273,6 +274,84 @@ namespace StudyFocus
             get { return Settings.EffectiveSchedules().Any(x => x.Enabled && x.Days != 0); }
         }
 
+        public ScheduleWindow ActiveWindow(DateTimeOffset now)
+        {
+            RefreshCalendar(now);
+            ScheduleWindow found = null;
+            foreach (var window in calendar)
+            {
+                if (window.Start > now) break;
+                if (now < window.End && (found == null || window.Start > found.Start)) found = window;
+            }
+            return found;
+        }
+
+        public void StartActiveSchedule(DateTimeOffset now)
+        {
+            if (Session != null) return;
+            var window = ActiveWindow(now);
+            if (window == null) return;
+            StartSession(now, window);
+        }
+
+        private static void ScheduleLog(string text)
+        {
+            try
+            {
+                string dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "StudyFocus");
+                Directory.CreateDirectory(dir);
+                File.AppendAllText(Path.Combine(dir, "schedule.log"), DateTime.Now.ToString("s") + " " + text + Environment.NewLine);
+            }
+            catch { }
+        }
+
+        public bool DisableScheduleCovering(DateTimeOffset now)
+        {
+            bool changed = false;
+            foreach (var plan in Settings.EffectiveSchedules())
+            {
+                if (!plan.Enabled) continue;
+                var start = LocalTime(now.Date.AddMinutes(plan.Minute));
+                if (!start.HasValue || start.Value > now) continue;
+                var end = LocalTime(now.Date.AddMinutes(plan.EndOnStartDay(Settings.Minutes)));
+                if (end.HasValue && now < end.Value) { plan.Enabled = false; changed = true; }
+            }
+            if (changed) SaveSettings(Settings.Copy());
+            ScheduleLog("covering now=" + now.ToString("s") + " changed=" + changed);
+            return changed;
+        }
+
+        public bool DisableScheduleStart(DateTimeOffset start)
+        {
+            int minute = start.Hour * 60 + start.Minute;
+            bool changed = false;
+            foreach (var plan in Settings.EffectiveSchedules())
+            {
+                if (!plan.Enabled || plan.Minute != minute) continue;
+                plan.Enabled = false;
+                changed = true;
+            }
+            if (changed) SaveSettings(Settings.Copy());
+            return changed;
+        }
+        public bool DisableActiveSchedule(DateTimeOffset now)
+        {
+            var window = ActiveWindow(now);
+            if (window == null) return false;
+            bool changed = false;
+            foreach (var plan in Settings.EffectiveSchedules())
+            {
+                if (!plan.Enabled) continue;
+                var start = LocalTime(now.Date.AddMinutes(plan.Minute));
+                if (start.HasValue && start.Value == window.Start)
+                {
+                    plan.Enabled = false;
+                    changed = true;
+                }
+            }
+            if (changed) SaveSettings(Settings.Copy());
+            return changed;
+        }
         public bool TryDue(DateTimeOffset now, out DateTimeOffset slot)
         {
             var window = DueWindow(now);
@@ -368,6 +447,7 @@ namespace StudyFocus
                 {
                     CountUp = countUp,
                     Scheduled = scheduled != null,
+                    ScheduleStartUtc = scheduled == null ? 0 : scheduled.Start.UtcTicks,
                     TotalMinutes = endsAt == 0 ? 0 : (int)Math.Ceiling(TimeSpan.FromTicks(endsAt - now.UtcTicks).TotalMinutes),
                     StartedUtc = now.UtcTicks,
                     FinishUtc = endsAt,

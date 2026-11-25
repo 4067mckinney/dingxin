@@ -11,6 +11,12 @@ namespace StudyFocus
     {
         private static readonly string[] Weeknames = { "周一", "周二", "周三", "周四", "周五", "周六", "周日" };
 
+        private void ReloadPlans()
+        {
+            plans = engine.Settings.EffectiveSchedules().Select(plan => plan.Copy()).ToList();
+            ShowPlanSummary();
+        }
+
         private void ShowPlanSummary()
         {
             int enabled = plans.Count(plan => plan.Enabled);
@@ -129,6 +135,24 @@ namespace StudyFocus
                         updated.ScheduleDays = 0;
                         engine.UpdateSettings(DateTimeOffset.Now, updated);
                         plans = engine.Settings.EffectiveSchedules().Select(plan => plan.Copy()).ToList();
+                        var activeNow = engine.ActiveWindow(DateTimeOffset.Now);
+                        if (activeNow != null && engine.Session == null)
+                        {
+                            if (ConfirmScheduledStart(dialog))
+                            {
+                                EnsureProxy();
+                                engine.StartActiveSchedule(DateTimeOffset.Now);
+                                Restrict(DateTimeOffset.Now);
+                                if (engine.Settings.PlayChimes) FocusSounds.PlayStart();
+                                SelectPage(0);
+                                Reveal();
+                            }
+                            else
+                            {
+                                engine.DisableScheduleCovering(DateTimeOffset.Now);
+                                plans = engine.Settings.EffectiveSchedules().Select(plan => plan.Copy()).ToList();
+                            }
+                        }
                         ShowPlanSummary();
                         ShowSaved();
                         dialog.DialogResult = DialogResult.OK;
@@ -145,6 +169,48 @@ namespace StudyFocus
             }
         }
 
+        private bool ConfirmScheduledStart(IWin32Window owner)
+        {
+            using (var form = new Form
+            {
+                Text = "进入专注模式", FormBorderStyle = FormBorderStyle.FixedDialog, StartPosition = FormStartPosition.CenterParent,
+                TopMost = true, ClientSize = new Size(372, 156), MaximizeBox = false, MinimizeBox = false,
+                BackColor = palette.Background, ForeColor = palette.Ink, Font = UiFont(10.5f)
+            })
+            {
+                var head = new Label
+                {
+                    Text = "现在正处于计划时间段", Dock = DockStyle.Top, Height = 48,
+                    TextAlign = ContentAlignment.MiddleCenter, Font = UiFont(12f, FontStyle.Bold)
+                };
+                int left = 10;
+                var body = new Label
+                {
+                    Text = left + " 秒后将自动进入专注模式。", Dock = DockStyle.Top, Height = 34,
+                    TextAlign = ContentAlignment.MiddleCenter
+                };
+                var row = new FlowLayoutPanel { Dock = DockStyle.Bottom, Height = 54, FlowDirection = FlowDirection.RightToLeft, Padding = new Padding(0, 10, 12, 0) };
+                var enter = Button("立即进入", 100, delegate { form.DialogResult = DialogResult.OK; }, true);
+                var cancel = Button("取消", 80, delegate { form.DialogResult = DialogResult.Cancel; });
+                row.Controls.Add(enter);
+                row.Controls.Add(cancel);
+                form.Controls.Add(row);
+                form.Controls.Add(body);
+                form.Controls.Add(head);
+                var clock = new Timer { Interval = 1000 };
+                clock.Tick += delegate
+                {
+                    left--;
+                    if (left > 0) body.Text = left + " 秒后将自动进入专注模式。";
+                    else { body.Text = "正在进入…"; clock.Stop(); form.DialogResult = DialogResult.OK; }
+                };
+                PaintTree(form, bg);
+                clock.Start();
+                try { form.ShowDialog(owner); }
+                finally { clock.Stop(); clock.Dispose(); }
+                return form.DialogResult == DialogResult.OK;
+            }
+        }
         private bool EditSchedule(Form owner, FocusSchedule plan)
         {
             TableLayoutPanel table;
