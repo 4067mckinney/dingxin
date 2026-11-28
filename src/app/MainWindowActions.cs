@@ -253,7 +253,6 @@ namespace StudyFocus
             var scheduleActionHeight = skippableSchedule.HasValue ? (float)Math.Round(30 * DeviceDpi / 96.0) : 0;
             if (scheduleAction.Height != scheduleActionHeight) scheduleAction.Height = scheduleActionHeight;
             emergency.Visible = active;
-            emergencyMenu.Visible = active;
             quit.Enabled = !locked;
             quit.Text = testing ? "退出应用（测试中）" : active ? "退出应用（专注中）"
                 : locked ? "退出应用（即将自动开始）" : "退出应用";
@@ -485,6 +484,25 @@ namespace StudyFocus
             }
         }
 
+        private string FocusEdgeProfile()
+        {
+            string dedicated = Path.Combine(data, "EdgeProfile-" + proxy.Port);
+            if (!engine.Settings.EdgeDefaultProfile) return dedicated;
+            var running = Process.GetProcessesByName("msedge");
+            if (running.Length == 0) return null;
+            var answer = MessageBox.Show(this,
+                "使用日常 Edge 配置需要先结束当前所有 Edge 进程（包括后台常驻的）。\n结束后会用你已登录的配置重新打开。\n\n是否现在结束？",
+                "专注 Edge", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
+            if (answer != DialogResult.Yes)
+            {
+                notice = "本轮改用独立配置；想用日常账号请先完全退出 Edge。";
+                return dedicated;
+            }
+            foreach (var process in running)
+                try { process.Kill(); } catch { }
+            System.Threading.Thread.Sleep(900);
+            return null;
+        }
         private void EnsureProxy()
         {
             if (proxy != null) return;
@@ -502,7 +520,7 @@ namespace StudyFocus
             try
             {
                 File.WriteAllText(path, proxy.Port.ToString(CultureInfo.InvariantCulture));
-                guard.ConfigureFocusEdge(ProcessGuard.FindEdge(), Path.Combine(data, "EdgeProfile-" + proxy.Port), proxy.Port);
+                guard.ConfigureFocusEdge(ProcessGuard.FindEdge(), FocusEdgeProfile(), proxy.Port);
             }
             catch { proxy.Dispose(); proxy = null; throw; }
         }
@@ -538,7 +556,7 @@ namespace StudyFocus
             string url = domain == null ? "about:blank"
                 : proxy != null ? "http://127.0.0.1:" + proxy.Port + "/start"
                 : "https://" + (domain.StartsWith("*.") ? domain.Substring(2) : domain);
-            guard.ConfigureFocusEdge(browser, Path.Combine(data, "EdgeProfile-" + proxy.Port), proxy.Port);
+            guard.ConfigureFocusEdge(browser, FocusEdgeProfile(), proxy.Port);
             guard.OpenEdge(url);
         }
 

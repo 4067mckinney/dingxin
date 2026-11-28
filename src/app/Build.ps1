@@ -14,7 +14,7 @@ $OutputEncoding = [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
 $references = @('/r:System.Drawing.dll', '/r:System.Windows.Forms.dll', '/r:System.Security.dll', '/r:System.Web.Extensions.dll', '/r:System.Management.dll', '/r:System.IO.Compression.dll', '/r:System.IO.Compression.FileSystem.dll')
 $sources = @('Program.cs', 'ProductBrand.cs', 'BrandArtwork.cs', 'Engine.cs', 'Proxy.cs', 'ProcessGuard.cs', 'AppCatalog.cs', 'AppImages.cs', 'AdvancedCredential.cs',
-    'FocusSounds.cs', 'FocusHistory.cs', 'Motion.cs', 'MainWindow.cs', 'MainWindowLayout.cs', 'MainWindowActions.cs', 'MainWindowAdvanced.cs',
+    'FocusSounds.cs', 'FocusHistory.cs', 'Motion.cs', 'SystemProxy.cs', 'MainWindow.cs', 'MainWindowLayout.cs', 'MainWindowActions.cs', 'MainWindowAdvanced.cs',
     'MainWindowSchedules.cs', 'MainWindowAllowlists.cs', 'MainWindowStatistics.cs', 'MainWindowSettings.cs',
     'MainWindowReference.cs', 'MainWindowPolishedControls.cs', 'MainWindowPolishedApps.cs', 'FloatingTimerWindow.cs', 'SetupWindow.cs')
 $output = [IO.Path]::GetFullPath($OutputDirectory)

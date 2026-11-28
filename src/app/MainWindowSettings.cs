@@ -28,7 +28,9 @@ namespace StudyFocus
         private AccentSwatch[] accentSwatches;
         private Panel settingsScroll;
         private AccentSwatch[] hudSwatches;
+        private PolishedSwitch edgeProfile;
         private PolishedSwitch hudFollow, hudLockedSwitch, hudPinnedSwitch;
+
 
         private Control BuildSettings()
         {
@@ -72,6 +74,9 @@ namespace StudyFocus
             Add(display, reduceMotion);
 
             behavior = Section(preferences, "系统", 8);
+            edgeProfile = new PolishedSwitch("专注 Edge 使用日常配置（保留账号与密码）");
+            edgeProfile.AccessibleDescription = "关闭时使用独立的专注配置";
+            Add(behavior, edgeProfile);
             startup = new PolishedSwitch("登录 Windows 后自动启动");
             startup.AccessibleDescription = "登录 Windows 后在后台启动" + Program.Name;
             Add(behavior, startup);
@@ -122,6 +127,8 @@ namespace StudyFocus
             showFloatingOnPage.CheckedChanged += delegate { SaveDisplayPreferences(showFloatingOnPage.Checked); };
             reduceMotion.CheckedChanged += delegate { SaveDisplayPreferences(); };
             startup.CheckedChanged += delegate { SaveStartupPreference(); };
+            edgeProfile.CheckedChanged += delegate { SaveEdgeProfile(); };
+
             playChimes.CheckedChanged += delegate { SaveAlertPreferences(); };
             showNotifications.CheckedChanged += delegate { SaveAlertPreferences(); };
             return result;
@@ -445,6 +452,12 @@ namespace StudyFocus
             catch (Exception ex) { LoadPreferences(); Warn(ex.Message); }
         }
 
+        private void SaveEdgeProfile()
+        {
+            if (loadingPreferences || edgeProfile.Checked == engine.Settings.EdgeDefaultProfile) return;
+            try { engine.UpdateEdgeDefaultProfile(edgeProfile.Checked); ShowSaved(); }
+            catch (Exception ex) { LoadPreferences(); Warn(ex.Message); }
+        }
         private void SaveStartupPreference()
         {
             if (loadingPreferences || startup.Checked == engine.Settings.Startup) return;

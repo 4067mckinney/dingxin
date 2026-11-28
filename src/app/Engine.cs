@@ -20,6 +20,8 @@ namespace StudyFocus
         public int? MonthlyStopCount { get; set; }
         public int? MonthlyStopMinutes { get; set; }
         public bool Startup { get; set; }
+        public bool EdgeDefaultProfile { get; set; }
+        public bool SystemProxy { get; set; }
         public bool Dark { get; set; }
         public bool FollowSystemTheme { get; set; }
         public bool ShowFloatingTimer { get; set; }
@@ -693,6 +695,22 @@ namespace StudyFocus
             var settings = Settings.Copy();
             settings.HudX = x;
             settings.HudY = y;
+            SaveSettings(settings);
+        }
+
+        public void UpdateSystemProxy(bool enabled)
+        {
+            if (Settings.SystemProxy == enabled) return;
+            var settings = Settings.Copy();
+            settings.SystemProxy = enabled;
+            SaveSettings(settings);
+        }
+
+        public void UpdateEdgeDefaultProfile(bool enabled)
+        {
+            if (Settings.EdgeDefaultProfile == enabled) return;
+            var settings = Settings.Copy();
+            settings.EdgeDefaultProfile = enabled;
             SaveSettings(settings);
         }
 

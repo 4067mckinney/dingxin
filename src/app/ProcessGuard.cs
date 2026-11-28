@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -30,6 +30,9 @@ namespace StudyFocus
         private List<AppRule> rules;
         private HashSet<string> exactPaths;
         private IntPtr previousWindow;
+        private bool anyEdgeAllowed;
+
+        internal void SetSystemProxyMode(bool enabled) { anyEdgeAllowed = enabled; }
         private int previousPid;
         private string previousPath;
         private bool previousAllowed, previousEdge;
@@ -94,7 +97,7 @@ namespace StudyFocus
                 string name = Path.GetFileName(previousPath);
                 previousEdge = string.Equals(name, "msedge.exe", StringComparison.OrdinalIgnoreCase);
                 previousAllowed = previousPath != null &&
-                    (previousEdge ? IsFocusEdge(pid, previousPath) : IsSystem(previousPath, name) || IsAllowedApp(previousPath));
+                    (previousEdge ? (anyEdgeAllowed || IsFocusEdge(pid, previousPath)) : IsSystem(previousPath, name) || IsAllowedApp(previousPath) || AncestorAllowed(pid));
                 retriedNormalWindow = false;
             }
             if (previousPath == null) return null;
@@ -122,7 +125,13 @@ namespace StudyFocus
 
         private bool IsAllowedApp(string path)
         {
+            string file = string.IsNullOrEmpty(path) ? "" : Path.GetFileName(path);
+            if (string.Equals(file, "应急停止.exe", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(file, "StudyFocus_EmergencyStop.exe", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(file, "卸载.exe", StringComparison.OrdinalIgnoreCase)) return true;
             if (exactPaths.Contains(path) || rules.Any(rule => rule.Contains(path))) return true;
+            if (rules.Any(rule => Covers(rule, path))) return true;
+            if (AppCatalog.StoreRuntimeContains(path, rules)) return true;
             string folder = Path.GetDirectoryName(path);
             var candidates = rules.Where(rule => !string.IsNullOrEmpty(rule.GroupKey) &&
                 rule.GroupKey.IndexOf('|') >= 0 &&
@@ -132,6 +141,64 @@ namespace StudyFocus
             return candidates.Any(rule => rule.SameApp(entry.Rule));
         }
 
+        private static string WeChatPluginRoot(string company)
+        {
+            string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Tencent", company);
+            return Directory.Exists(root) ? root.TrimEnd('\\') + "\\" : null;
+        }
+
+        private bool Covers(AppRule rule, string path)
+        {
+            if (rule == null) return false;
+            string name = string.IsNullOrEmpty(rule.Path) ? "" : Path.GetFileName(rule.Path);
+            if (string.Equals(name, "Weixin.exe", StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(name, "WeChat.exe", StringComparison.OrdinalIgnoreCase))
+            {
+                foreach (string company in new[] { "xwechat", "WeChat" })
+                {
+                    string plugin = WeChatPluginRoot(company);
+                    if (plugin != null && path.StartsWith(plugin, StringComparison.OrdinalIgnoreCase)) return true;
+                }
+            }
+            string root = !string.IsNullOrEmpty(rule.Root) ? rule.Root
+                : string.IsNullOrEmpty(rule.Path) ? null : Path.GetDirectoryName(rule.Path) + "\\";
+            return root != null && path.StartsWith(root, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static readonly Dictionary<int, int> parents = new Dictionary<int, int>();
+
+        private static int ParentOf(int pid)
+        {
+            lock (parents)
+            {
+                int cached;
+                if (parents.TryGetValue(pid, out cached)) return cached;
+            }
+            int parent = 0;
+            try
+            {
+                using (var searcher = new System.Management.ManagementObjectSearcher(
+                    "SELECT ParentProcessId FROM Win32_Process WHERE ProcessId=" + pid))
+                    foreach (System.Management.ManagementObject item in searcher.Get())
+                        parent = Convert.ToInt32(item["ParentProcessId"]);
+            }
+            catch { }
+            lock (parents) { parents[pid] = parent; }
+            return parent;
+        }
+
+        private bool AncestorAllowed(int pid)
+        {
+            for (int depth = 0; depth < 4; depth++)
+            {
+                pid = ParentOf(pid);
+                if (pid <= 4) return false;
+                string path = ImagePath(pid);
+                if (string.IsNullOrEmpty(path)) continue;
+                if (IsAllowedApp(path)) return true;
+            }
+            return false;
+        }
         private static string HostedApplication(IntPtr frame, int host)
         {
             string path = null;
@@ -168,7 +235,7 @@ namespace StudyFocus
 
         internal void ConfigureFocusEdge(string edge, string profile, int port)
         {
-            var fullProfile = Path.GetFullPath(profile);
+            var fullProfile = profile == null ? null : Path.GetFullPath(profile);
             var proxy = "http://127.0.0.1:" + port.ToString(System.Globalization.CultureInfo.InvariantCulture);
             if (focusEdgeExecutable == edge && focusEdgeProfile == fullProfile && focusEdgeProxy == proxy) return;
             focusEdgeExecutable = edge;
@@ -181,8 +248,8 @@ namespace StudyFocus
         public void OpenEdge(string website)
         {
             if (focusEdgeExecutable == null) throw new InvalidOperationException("未找到 Microsoft Edge。");
-            Directory.CreateDirectory(focusEdgeProfile);
-            string flags = "--user-data-dir=\"" + focusEdgeProfile + "\" --proxy-server=\"" + focusEdgeProxy +
+            if (focusEdgeProfile != null) Directory.CreateDirectory(focusEdgeProfile);
+            string flags = (focusEdgeProfile == null ? "" : "--user-data-dir=\"" + focusEdgeProfile + "\"") + " --proxy-server=\"" + focusEdgeProxy +
                 "\" --proxy-bypass-list=\"<-loopback>\" --disable-quic --no-first-run --no-default-browser-check" +
                 " --disable-extensions --disable-background-networking --disable-background-mode --no-proxy-auto-detect" +
                 " --force-webrtc-ip-handling-policy=disable_non_proxied_udp";
@@ -204,7 +271,10 @@ namespace StudyFocus
             // A second launch can hand its arguments to the existing browser and exit.
             // Inspect the process that owns the window, even after StudyFocus restarts.
             string[] args = ReadEdgeArguments(pid);
-            if (!HasUniqueSwitch(args, "--user-data-dir=", focusEdgeProfile) ||
+            bool profileOk = focusEdgeProfile == null
+                ? !args.Any(arg => arg.StartsWith("--user-data-dir=", StringComparison.OrdinalIgnoreCase))
+                : HasUniqueSwitch(args, "--user-data-dir=", focusEdgeProfile);
+            if (!profileOk ||
                 !HasUniqueSwitch(args, "--proxy-server=", focusEdgeProxy) ||
                 !HasUniqueSwitch(args, "--proxy-bypass-list=", "<-loopback>") ||
                 args.Any(arg => arg == "--no-proxy-server" || arg == "--proxy-auto-detect" ||

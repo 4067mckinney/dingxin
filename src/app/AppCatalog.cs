@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -56,6 +56,7 @@ namespace StudyFocus
                 string file = System.IO.Path.GetFileNameWithoutExtension(path);
                 Name = string.IsNullOrWhiteSpace(name) ? DisplayName(path, details) : name.Trim();
                 string root = InstallRoot(path, product, company);
+                if (string.IsNullOrEmpty(root)) root = StoreRuntimeRoot(path);
                 string folder = System.IO.Path.GetDirectoryName(path);
                 GroupKey = root != null ? root : !string.IsNullOrWhiteSpace(product) && !string.IsNullOrWhiteSpace(company) &&
                     !SharedFolder(folder) ? folder + "|" + company + "|" + product : path;
@@ -143,6 +144,41 @@ namespace StudyFocus
                 !ProcessGuard.ExcludedFromCatalog(path);
         }
 
+        internal static string StoreRuntimeRoot(string path)
+        {
+            var parts = path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            for (int i = 0; i + 1 < parts.Length; i++)
+            {
+                if (!parts[i].Equals("WindowsApps", StringComparison.OrdinalIgnoreCase)) continue;
+                string package = parts[i + 1].Split('_')[0];
+                string[] names = package.Split('.');
+                if (names.Length < 2) continue;
+                string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                string[] candidates =
+                {
+                    Path.Combine(local, names[0], names[1]),
+                    Path.Combine(local, "Programs", names[1]),
+                    Path.Combine(local, names[names.Length - 1]),
+                    Path.Combine(local, "Programs", names[names.Length - 1])
+                };
+                foreach (string candidate in candidates)
+                    if (Directory.Exists(candidate)) return candidate.TrimEnd('\\') + "\\";
+            }
+            return null;
+        }
+
+        internal static bool StoreRuntimeContains(string probe, IEnumerable<AppRule> rules)
+        {
+            if (string.IsNullOrEmpty(probe)) return false;
+            foreach (AppRule rule in rules)
+            {
+                if (rule == null || string.IsNullOrEmpty(rule.Path) ||
+                    rule.Path.IndexOf("WindowsApps", StringComparison.OrdinalIgnoreCase) < 0) continue;
+                string root = StoreRuntimeRoot(rule.Path);
+                if (root != null && probe.StartsWith(root, StringComparison.OrdinalIgnoreCase)) return true;
+            }
+            return false;
+        }
         internal static bool IsKnownWindowsPackage(string path)
         {
             var parts = path.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);

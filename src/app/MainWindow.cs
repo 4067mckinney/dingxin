@@ -21,7 +21,7 @@ namespace StudyFocus
         private readonly ProcessGuard guard;
         private readonly System.Windows.Forms.Timer timer = new System.Windows.Forms.Timer { Interval = 300 };
         private readonly NotifyIcon tray;
-        private readonly ToolStripMenuItem quit, emergencyMenu;
+        private readonly ToolStripMenuItem quit;
         private WebsiteProxy proxy;
         private bool enforced, enforcingTest, exitAllowed, loadingRules;
         private Stopwatch trial;
@@ -103,7 +103,6 @@ namespace StudyFocus
             menu.Items.Add("显示主窗口", null, delegate { Reveal(); });
             floatingMenu = (ToolStripMenuItem)menu.Items.Add("显示悬浮计时", null, delegate { ToggleFloatingTimer(); });
             menu.Items.Add("打开 Edge", null, delegate { Act(OpenEdge); });
-            emergencyMenu = (ToolStripMenuItem)menu.Items.Add("紧急解除限制", null, delegate { Reveal(); Act(EmergencyRelease); });
             quit = (ToolStripMenuItem)menu.Items.Add("退出应用", null, delegate { ExitApp(); });
             tray.ContextMenuStrip = menu;
             tray.DoubleClick += delegate { Reveal(); };

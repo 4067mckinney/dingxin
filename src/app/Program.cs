@@ -16,7 +16,7 @@ using Microsoft.Win32;
 [assembly: AssemblyDescription("Windows 专注计时与白名单")]
 [assembly: AssemblyProduct(StudyFocus.ProductBrand.Name)]
 [assembly: AssemblyCompany(StudyFocus.ProductBrand.Company)]
-[assembly: AssemblyVersion("2.4.3.0")]
+[assembly: AssemblyVersion("2.5.5.0")]
 
 namespace StudyFocus
 {
@@ -99,7 +99,9 @@ namespace StudyFocus
                         using (MainWindow window = new MainWindow(engine, show, uninstall, Data, arg == "--startup", update))
                         {
                             if (arg == "--uninstall") ShowUninstallLocked(window, UsesDarkTheme(engine.Settings));
-                            Application.Run(window);
+                            SystemProxy.Recover();
+                            try { Application.Run(window); }
+                            finally { SystemProxy.Disable(); }
                         }
                         if (UninstallOnExit) RemoveApp(UninstallDeleteData);
                     }
@@ -563,6 +565,14 @@ namespace StudyFocus
 
         private static void InstallEmergencyTool(string directory)
         {
+            foreach (string name in new[] { "应急停止", "StudyFocus_EmergencyStop" })
+                foreach (Process process in Process.GetProcessesByName(name))
+                {
+                    try { process.Kill(); process.WaitForExit(2000); }
+                    catch (Exception) { }
+                    finally { process.Dispose(); }
+                }
+            System.Threading.Thread.Sleep(400);
             try
             {
                 using (Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("StudyFocus_EmergencyStop.exe"))

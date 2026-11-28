@@ -12,7 +12,7 @@ using Microsoft.Win32;
 [assembly: AssemblyDescription("结束当前专注并跳过眼下的自动计划")]
 [assembly: AssemblyProduct(StudyFocus.ProductBrand.EmergencyName)]
 [assembly: AssemblyCompany(StudyFocus.ProductBrand.Company)]
-[assembly: AssemblyVersion("1.7.0.0")]
+[assembly: AssemblyVersion("1.8.0.0")]
 
 namespace StudyFocus
 {
