@@ -9,8 +9,11 @@
 ## 功能
 
 - **专注计时**：倒计时 / 正计时，自动开始计划，暂停额度，提前停止记录
+- **自动开始计划**：时间段内启动即自动进入；停止后该计划自动变“已停用”；重新启用并保存时弹出 10 秒置顶倒计时，取消则恢复停用
 - **软件白名单**：按软件组放行，支持已识别软件选择与手动添加
+- **进程放行**：允许白名单软件的安装目录子进程与插件进程（如微信小程序、网盘内嵌浏览器），最多追溯 4 层父进程
 - **网站白名单**：本地 HTTP/HTTPS 代理拦截，支持精确域名与 `*.子域名`
+- **日常 Edge 配置**：可用已登录的 Edge 打开专注浏览器，保留账号、密码、收藏
 - **开始前检查**：开始前查看本轮限制，网页自检（DNS / 443 / 拦截是否生效）
 - **悬浮计时窗**：置顶/锁定可切换，颜色可跟随主题或单独设置
 - **专注统计**：按日/周/月/年统计，前台软件用时分布，数据导出
@@ -19,17 +22,23 @@
 
 ## 截图
 
-| 专注 | 规则 |
-| --- | --- |
-| ![专注](docs/screenshots/focus-dark.png) | ![规则](docs/screenshots/rules-apps-dark.png) |
+<p align="center">
+  <img src="docs/screenshots/focus-dark.png" width="49%" alt="专注">
+  <img src="docs/screenshots/rules-apps-dark.png" width="49%" alt="规则">
+  <br>
+  <sub>专注 / 规则设置</sub>
+</p>
 
-| 统计 | 设置 |
-| --- | --- |
-| ![统计](docs/screenshots/stats.png) | ![设置](docs/screenshots/settings.png) |
+<p align="center">
+  <img src="docs/screenshots/stats.png" width="49%" alt="统计">
+  <img src="docs/screenshots/settings.png" width="49%" alt="设置">
+  <br>
+  <sub>专注统计 / 设置</sub>
+</p>
 
 ## 下载与安装
 
-1. 在 [Releases](../../releases) 下载最新的 `定心_x.y.z_Setup.exe`；
+1. 在 [Releases](../../releases) 下载最新的 `dingxin-x.y.z-Setup.exe`；
 2. 运行后选择安装目录；
 3. 安装完成会创建桌面与开始菜单快捷方式，目录内包含：
    - `定心.exe` 主程序
@@ -39,48 +48,19 @@
 
 系统要求：Windows 10 / 11，.NET Framework 4.8（系统自带）。
 
+## 使用说明
+
+- 网站限制只对“专注 Edge”生效；点“打开专注 Edge”会用本地代理参数启动浏览器；
+- 设置中可开启“专注 Edge 使用日常配置”，用你已登录的配置打开，账号、密码、收藏保留；
+- 使用日常配置前需完全退出 Edge（含后台常驻），否则本轮自动退回独立配置；
+- 应急停止：专注中运行安装目录的 `应急停止.exe`，会清会话、写“强制停止（应急）”记录。
+
 ## 从源码构建
 
-需要 Windows 自带的 .NET Framework 编译器（无需 Visual Studio / .NET SDK）：
+需要 Windows 自带的 .NET Framework 编译器（无需 Visual Studio / .NET SDK）。
 
-```powershell
-cd src\app
-powershell -NoProfile -ExecutionPolicy Bypass -File .\Build.ps1 -OutputDirectory .\out
-```
-
-产物：`out\StudyFocus_Setup.exe`。
-
-构建前如需内置应急停止工具，先构建它：
+**先构建应急停止工具**（它的版本门禁跟随主程序版本）：
 
 ```powershell
 cd src\emergency
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Build-Emergency.ps1 -SourceDir ..\app
-```
-
-`Build.ps1` 会自动把 `..\emergency\StudyFocus_EmergencyStop.exe` 和 `Sources.zip` 嵌入安装包。
-
-## 目录结构
-
-```text
-src/
-  app/            主程序源码（WinForms）
-  emergency/      应急停止工具源码
-docs/screenshots/ 界面截图
-publish.ps1       一键初始化 git 并推送到 GitHub 的脚本
-```
-
-## 数据与隐私
-
-- 设置与记录：`%LOCALAPPDATA%\StudyFocus`（`state.dat` 经 DPAPI 加密）
-- 崩溃日志：同目录 `crash-*.log`，最多保留 20 个
-- 网站访问只经过本机 `127.0.0.1` 代理，不上传任何数据
-
-## 已知限制
-
-- 未做 Authenticode 签名，首次运行会有 SmartScreen 提示
-- 网站拦截基于域名，页面样式/视频依赖同站 CDN；已为 B 站内置关联域名，其它站点可在白名单中自行添加 CDN 域名
-- 未启用 PerMonitorV2，多显示器不同缩放拖动时可能需要重开窗口
-
-## License
-
-MIT，见 [LICENSE](LICENSE)。
